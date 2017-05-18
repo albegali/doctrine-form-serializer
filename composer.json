@@ -1,0 +1,23 @@
+{
+    "name": "albegali/doctrine-form-serializer",
+    "description": "Form generator and serializer from doctrine entity",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Albegali\\DoctrineFormSerializer\\": "src/"
+        }
+    },
+    "require": {
+        "symfony/config": "^3.2",
+        "symfony/yaml": "^3.2",
+        "doctrine/annotations": "^1.4",
+        "doctrine/orm": "^2.5"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alberto Galimberti",
+            "email": "albegali89@gmail.com"
+        }
+    ]
+}

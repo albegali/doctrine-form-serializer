@@ -1,0 +1,17 @@
+form:
+    name: anagrafica
+    label: "Anagrafica"
+    entity: Facile\Ws\PrestitiNewBundle\Entity\Anagrafica
+
+    fields:
+        -   property: datiAnagraficiRichiedente.nome
+            attributes:
+                placeholder: "Nome"
+
+        -   property: datiAnagraficiRichiedente.cognome
+            attributes:
+                placeholder: "Cognome"
+
+        -   property: datiAnagraficiRichiedente.datiResidenza.luogo.comune
+            attributes:
+                placeholder: "Comune"
