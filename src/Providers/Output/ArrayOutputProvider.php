@@ -18,36 +18,21 @@ class ArrayOutputProvider extends AbstractOutputProvider
         // path of the property
         $propertyPath = $field['property'];
         $targetEntity = $this->form['entity'];
-        $field['attributes']['name'] = $this->form['name'] . '[' . $propertyPath . ']';
-        $field['attributes']['id'] = $this->form['name'] . '_' . str_replace('.', '_', $propertyPath);
 
         if ($field['mapped'] == false) {
+            $field['attributes']['name'] = $this->form['name'] . '[' . $propertyPath . ']';
+            $field['attributes']['id'] = $this->form['name'] . '_' . str_replace('.', '_', $propertyPath);
             return $field;
         }
 
-        if (strpos($propertyPath, '.') !== false) {
-            $subfields = explode('.', $propertyPath);
+        $fieldGuess = $this->typeGuesser->guess($targetEntity, $propertyPath, $this->form['name']);
 
-            $field['attributes']['name'] = $this->form['name'] . '[' . implode('][', $subfields) . ']';
+        $field['attributes']['name'] = $fieldGuess->getName();
+        $field['attributes']['id'] = $fieldGuess->getId();
+        $field['type'] = $field['type'] ?? $fieldGuess->getType();
+        $field['field'] = $field['field'] ?? $fieldGuess->getField();
 
-            // name of the property in the last associated entity
-            $propertyPath = array_pop($subfields);
-
-            foreach ($subfields as $subfield) {
-                $targetEntity = $this
-                    ->typeGuesser
-                    ->getMetadata($targetEntity)
-                    ->getAssociationMapping($subfield)['targetEntity'];
-            }
-        }
-
-        $types = $this->typeGuesser->guessType($targetEntity, $propertyPath);
-        $guessOptions = $types[1] ?? [];
-        $guessRequired = $this->typeGuesser->guessRequired($targetEntity, $propertyPath);
-
-        $field['options']['required'] = $field['options']['required'] ?? $guessRequired;
-        $field['type'] = $field['type'] ?? $types[0];
-        $field['options'] = array_merge_recursive($guessOptions, $field['options']);
+        $field['options'] = array_merge_recursive($fieldGuess->getOptions(), $field['options']);
 
         return $field;
     }

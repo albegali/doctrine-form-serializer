@@ -3,129 +3,276 @@
 namespace Albegali\DoctrineFormSerializer\Guesser;
 
 use Albegali\DoctrineFormSerializer\Configuration\FormConfiguration;
+use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\Common\Persistence\ObjectManager;
 use Doctrine\Common\Util\ClassUtils;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Doctrine\ORM\Mapping\ManyToMany;
+use Doctrine\ORM\Mapping\OneToMany;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Mapping\ClassMetadataInterface;
+use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
 
 class SerializedTypeGuesser
 {
     /** @var ObjectManager */
     private $objectManager;
 
-    public function __construct(ObjectManager $objectManager)
+    /** @var MetadataFactoryInterface */
+    private $validatorMetadataFactory;
+
+    /** @var string */
+    private $property;
+
+    /** @var string */
+    private $fieldName;
+
+    /** @var ClassMetadata|ClassMetadataInfo */
+    private $metadata;
+
+    private static $htmlInputTags = ['input', 'select', 'textarea'];
+
+    /** @var array */
+    private static $htmlInputTypes = [
+        'button',
+        'checkbox',
+        'color',
+        'date',
+        'datetime-local',
+        'email',
+        'file',
+        'hidden',
+        'number',
+        'password',
+        'radio',
+        'range',
+        'reset',
+        'search',
+        'submit',
+        'tel',
+        'text',
+        'time',
+        'url',
+    ];
+
+    public function __construct(ObjectManager $objectManager, MetadataFactoryInterface $validatorMetadataFactory = null)
     {
         $this->objectManager = $objectManager;
+        $this->validatorMetadataFactory = $validatorMetadataFactory;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function guessType($class, $property)
+    public function guess(string $class, string $property, $formName = ''): FieldGuess
     {
-        $metadata = $this->getMetadata($class);
+        $fieldGuess = new FieldGuess();
 
-        if ($metadata->hasAssociation($property)) {
-            $multiple = $metadata->isCollectionValuedAssociation($property);
-            $mapping = $metadata->getAssociationMapping($property);
+        $this->property = $property;
+        $class = $this->getPropertyClassName($formName, $class);
+        $this->metadata = $this->getMetadata($class);
 
-            return [
-                ($multiple ? FormConfiguration::$htmlFields['checkbox'] : FormConfiguration::$htmlFields['select']),
-                [
-                    'multiple' => $multiple,
-                    'entity' => $mapping['targetEntity']
-                ]
-            ];
-        }
+        $fieldGuess->setName($this->guessName());
+        $fieldGuess->setId($this->guessId($formName));
+        $fieldGuess->setField($this->guessField());
+        $fieldGuess->setType($this->guessType());
+        $fieldGuess->setOptions($this->guessOptions());
+        $fieldGuess->addOption($this->guessRequired());
+        $fieldGuess->addOption($this->guessValidators($class));
 
-        switch ($metadata->getTypeOfField($property)) {
-            case Type::TARRAY:
-                return [FormConfiguration::$htmlFields['select'], ['multiple' => true, 'expanded' => true]];
-            case Type::BOOLEAN:
-                return [FormConfiguration::$htmlFields['radio'], ['choices' => [0 => 'No', 1 => 'Si'], 'multiple' => false, 'expanded' => true]];
-            case Type::DATETIME:
-            case Type::DATETIMETZ:
-            case 'vardatetime':
-                return [FormConfiguration::$htmlFields['date'], ['format' => 'd/M/y H:i:s', 'widget' => 'text']];
-            case Type::DATE:
-                return [FormConfiguration::$htmlFields['date'], ['format' => 'd/M/y', 'widget' => 'text']];
-            case Type::TIME:
-                return [FormConfiguration::$htmlFields['date'], ['format' => 'H:i:s', 'widget' => 'text']];
-            case Type::DECIMAL:
-            case Type::FLOAT:
-            case Type::INTEGER:
-            case Type::BIGINT:
-            case Type::SMALLINT:
-                return [FormConfiguration::$htmlFields['number']];
-            case Type::TEXT:
-                return [FormConfiguration::$htmlFields['textarea']];
-            case Type::STRING:
-                return [FormConfiguration::$htmlFields['text']];
-            default:
-                return [FormConfiguration::$htmlFields['text']];
-        }
+        return $fieldGuess;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function guessRequired($class, $property)
+    public function getPropertyClassName($formName, $class)
     {
-        $classMetadata = $this->getMetadata($class);
+        $this->fieldName = $formName;
 
-        // Check whether the field exists and is nullable or not
-        if ($classMetadata->hasField($property)) {
-            return !$classMetadata->isNullable($property) && Type::BOOLEAN !== $classMetadata->getTypeOfField($property);
-        }
+        if (strpos($this->property, '.') !== false) {
+            $subfields = explode('.', $this->property);
 
-        // Check whether the association exists, is a to-one association and its
-        // join column is nullable or not
-        if ($classMetadata->isAssociationWithSingleJoinColumn($property)) {
-            $mapping = $classMetadata->getAssociationMapping($property);
+            // name of the property in the last associated entity
+            $this->property = array_pop($subfields);
 
-            if (!isset($mapping['joinColumns'][0]['nullable'])) {
-                // The "nullable" option defaults to true, in that case the
-                // field should not be required.
-                return false;
+            foreach ($subfields as $subfield) {
+                $this->fieldName .= '[' . $subfield . ']' . ($this->isMultipleRelation($class, $subfield) ? '[]' : '');
+
+                $class = $this
+                    ->getMetadata($class)
+                    ->getAssociationMapping($subfield)['targetEntity'];
             }
+        }
 
-            return !$mapping['joinColumns'][0]['nullable'];
+        $this->fieldName .= '[' . $this->property . ']';
+
+        return $class;
+    }
+
+    protected function isMultipleRelation($class, $property)
+    {
+        $reader = new AnnotationReader();
+        $reflClass = new \ReflectionClass($class);
+        $refProp = $reflClass->getProperty($property);
+        $annotations = $reader->getPropertyAnnotations($refProp);
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof OneToMany || $annotation instanceof ManyToMany) {
+                return true;
+            }
         }
 
         return false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function guessMaxLength($class, $property)
+    public function guessName()
     {
-        $ret = $this->getMetadata($class);
-        if ($ret && $ret->hasField($property) && !$ret->hasAssociation($property)) {
-            $mapping = $ret->getFieldMapping($property);
+        return $this->fieldName;
+    }
 
-            if (isset($mapping['length'])) {
-                return $mapping['length'];
-            }
+    public function guessId($formName)
+    {
+        return $formName . '_' . str_replace('.', '_', $this->property);
+    }
 
-            if (in_array($ret->getTypeOfField($property), array(Type::DECIMAL, Type::FLOAT))) {
-                return null;
+    public function guessField()
+    {
+        if ($this->metadata->hasAssociation($this->property)) {
+            $multiple = $this->metadata->isCollectionValuedAssociation($this->property);
+
+            return $multiple ? 'input' : 'select';
+        }
+
+        switch ($this->metadata->getTypeOfField($this->property)) {
+            case Type::TEXT:
+                return 'textarea';
+            default:
+                return 'input';
+        }
+    }
+
+    public function guessType()
+    {
+        if ($this->metadata->hasAssociation($this->property)) {
+            $multiple = $this->metadata->isCollectionValuedAssociation($this->property);
+
+            return $multiple ? 'checkbox' : '';
+        }
+
+        switch ($this->metadata->getTypeOfField($this->property)) {
+            case Type::TARRAY:
+            case Type::SIMPLE_ARRAY:
+            case Type::JSON_ARRAY:
+                return 'checkbox';
+            case Type::BOOLEAN:
+                return 'radio';
+            case Type::DATETIME:
+            case Type::DATETIMETZ:
+            case 'vardatetime':
+                return 'datetime-local';
+            case Type::DATE:
+                return 'date';
+            case Type::TIME:
+                return 'time';
+            default:
+                return 'text';
+        }
+    }
+
+    public function guessOptions()
+    {
+        if ($this->metadata->hasAssociation($this->property)) {
+            $multiple = $this->metadata->isCollectionValuedAssociation($this->property);
+            $mapping = $this->metadata->getAssociationMapping($this->property);
+
+            return [
+                'multiple' => $multiple,
+                'entity' => $mapping['targetEntity']
+            ];
+        }
+
+        switch ($this->metadata->getTypeOfField($this->property)) {
+            case Type::BOOLEAN:
+                return ['choices' => [0 => 'No', 1 => 'Si'], 'multiple' => false, 'expanded' => true];
+                break;
+            case Type::DATETIME:
+            case Type::DATETIMETZ:
+            case 'vardatetime':
+                return ['format' => 'd/M/y H:i:s', 'widget' => 'text'];
+            case Type::DATE:
+                return ['format' => 'd/M/y', 'widget' => 'text'];
+            case Type::TIME:
+                return ['format' => 'H:i:s', 'widget' => 'text'];
+            default:
+                return [];
+        }
+    }
+
+    public function guessValidators($class)
+    {
+        $validators = ['constraint' => []];
+        $validators['constraint'][Length::class] = new Length(['min' => 0, 'max' => $this->guessMaxLength()]);
+        if ($this->validatorMetadataFactory) {
+            $guesses = array();
+            $classMetadata = $this->validatorMetadataFactory->getMetadataFor($class);
+
+            if ($classMetadata instanceof ClassMetadataInterface && $classMetadata->hasPropertyMetadata($this->property)) {
+                $memberMetadatas = $classMetadata->getPropertyMetadata($this->property);
+
+                foreach ($memberMetadatas as $memberMetadata) {
+                    $constraints = $memberMetadata->getConstraints();
+
+                    foreach ($constraints as $constraint) {
+
+                        $validators['constraint'][get_class($constraint)] = $constraint;
+                    }
+                }
             }
         }
 
-        return null;
+        return $validators;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function guessPattern($class, $property)
+    public function guessRequired()
     {
-        $ret = $this->getMetadata($class);
-        if ($ret && $ret->hasField($property) && !$ret->hasAssociation($property) && in_array($ret->getTypeOfField($property), array(Type::DECIMAL, Type::FLOAT), true)) {
-            return null;
+        $required = false;
+
+        // Check whether the field exists and is nullable or not
+        if ($this->metadata->hasField($this->property)) {
+            $required =  !$this->metadata->isNullable($this->property) && Type::BOOLEAN !== $this->metadata->getTypeOfField($this->property);
+        } else if ($this->metadata->isAssociationWithSingleJoinColumn($this->property)) {
+            $mapping = $this->metadata->getAssociationMapping($this->property);
+
+            if (!isset($mapping['joinColumns'][0]['nullable'])) {
+                // The "nullable" option defaults to true, in that case the
+                // field should not be required.
+                $required = false;
+            } else {
+                $required = !$mapping['joinColumns'][0]['nullable'];
+            }
+
         }
+
+        return ['required' => $required];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function guessMaxLength()
+    {
+        if ($this->metadata && $this->metadata->hasField($this->property) && !$this->metadata->hasAssociation($this->property)) {
+            $mapping = $this->metadata->getFieldMapping($this->property);
+
+            if (isset($mapping['length'])) {
+                return $mapping['length'];
+            }
+
+            if (in_array($this->metadata->getTypeOfField($this->property), array(Type::DECIMAL, Type::FLOAT))) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /**

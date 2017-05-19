@@ -11,7 +11,8 @@
         "symfony/config": "^3.2",
         "symfony/yaml": "^3.2",
         "doctrine/annotations": "^1.4",
-        "doctrine/orm": "^2.5"
+        "doctrine/orm": "^2.5",
+        "symfony/validator": "^3.2"
     },
     "license": "MIT",
     "authors": [
