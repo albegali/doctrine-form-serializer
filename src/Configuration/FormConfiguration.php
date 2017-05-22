@@ -54,7 +54,7 @@ class FormConfiguration implements ConfigurationInterface
                         ->children()
                             ->scalarNode('label')->end()
                             ->append($this->getFieldsNode())
-//                            ->append($this->getDependenciesNode())
+                            ->append($this->getDependenciesNode())
                         ->end()
                     ->end()
                 ->end()
@@ -68,7 +68,6 @@ class FormConfiguration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder();
         $rootNode = $treeBuilder->root('fields');
-
         $rootNode
             ->prototype('array')
                 ->children()
@@ -94,30 +93,31 @@ class FormConfiguration implements ConfigurationInterface
                     ->end()
                     ->arrayNode('options')->prototype('variable')->end()->end()
                     ->arrayNode('attributes')->normalizeKeys(false)->prototype('scalar')->end()->end()
+                    ->append($this->getDependenciesNode())
                 ->end()
             ->end()
         ;
 
         return $rootNode;
     }
-//
-//    protected function getDependenciesNode()
-//    {
-//        $treeBuilder = new TreeBuilder();
-//        $rootNode = $treeBuilder->root('depends_on');
-//
-//        $rootNode
-//            ->prototype('array')
-//                ->children()
-//                    ->scalarNode('field')->isRequired()->end()
-//                    ->arrayNode('values')
-//                        ->isRequired()
-//                        ->prototype('scalar')->end()
-//                    ->end()
-//                ->end()
-//            ->end()
-//        ;
-//
-//        return $rootNode;
-//    }
+
+    protected function getDependenciesNode()
+    {
+        $treeBuilder = new TreeBuilder();
+        $rootNode = $treeBuilder->root('depends_on');
+
+        $rootNode
+            ->prototype('array')
+                ->children()
+                    ->scalarNode('field')->isRequired()->end()
+                    ->arrayNode('values')
+                        ->isRequired()
+                        ->prototype('scalar')->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
+
+        return $rootNode;
+    }
 }

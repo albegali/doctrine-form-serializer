@@ -29,6 +29,9 @@ class SerializedTypeGuesser
     /** @var string */
     private $fieldName;
 
+    /** @var string */
+    private $fieldId;
+
     /** @var ClassMetadata|ClassMetadataInfo */
     private $metadata;
 
@@ -72,7 +75,7 @@ class SerializedTypeGuesser
         $this->metadata = $this->getMetadata($class);
 
         $fieldGuess->setName($this->guessName());
-        $fieldGuess->setId($this->guessId($formName));
+        $fieldGuess->setId($this->guessId());
         $fieldGuess->setField($this->guessField());
         $fieldGuess->setType($this->guessType());
         $fieldGuess->setOptions($this->guessOptions());
@@ -85,6 +88,7 @@ class SerializedTypeGuesser
     public function getPropertyClassName($formName, $class)
     {
         $this->fieldName = $formName;
+        $this->fieldId = $formName;
 
         if (strpos($this->property, '.') !== false) {
             $subfields = explode('.', $this->property);
@@ -94,6 +98,7 @@ class SerializedTypeGuesser
 
             foreach ($subfields as $subfield) {
                 $this->fieldName .= '[' . $subfield . ']' . ($this->isMultipleRelation($class, $subfield) ? '[]' : '');
+                $this->fieldId .= '_' . $subfield . ($this->isMultipleRelation($class, $subfield) ? '_0' : '');
 
                 $class = $this
                     ->getMetadata($class)
@@ -102,6 +107,7 @@ class SerializedTypeGuesser
         }
 
         $this->fieldName .= '[' . $this->property . ']';
+        $this->fieldId .= '_' . $this->property;
 
         return $class;
     }
@@ -126,9 +132,9 @@ class SerializedTypeGuesser
         return $this->fieldName;
     }
 
-    public function guessId($formName)
+    public function guessId()
     {
-        return $formName . '_' . str_replace('.', '_', $this->property);
+        return $this->fieldId;
     }
 
     public function guessField()
