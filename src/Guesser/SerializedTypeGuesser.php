@@ -2,7 +2,6 @@
 
 namespace Albegali\DoctrineFormSerializer\Guesser;
 
-use Albegali\DoctrineFormSerializer\Configuration\FormConfiguration;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\Common\Persistence\ObjectManager;
@@ -81,6 +80,7 @@ class SerializedTypeGuesser
         $fieldGuess->setOptions($this->guessOptions());
         $fieldGuess->addOption($this->guessRequired());
         $fieldGuess->addOption($this->guessValidators($class));
+        $fieldGuess->addOption($this->guessLabel());
 
         return $fieldGuess;
     }
@@ -215,7 +215,6 @@ class SerializedTypeGuesser
         $validators = ['constraint' => []];
         $validators['constraint'][Length::class] = new Length(['min' => 0, 'max' => $this->guessMaxLength()]);
         if ($this->validatorMetadataFactory) {
-            $guesses = array();
             $classMetadata = $this->validatorMetadataFactory->getMetadataFor($class);
 
             if ($classMetadata instanceof ClassMetadataInterface && $classMetadata->hasPropertyMetadata($this->property)) {
@@ -259,6 +258,14 @@ class SerializedTypeGuesser
         }
 
         return ['required' => $required];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function guessLabel()
+    {
+        return ['label' => ucwords(preg_replace('/(?<!^)[A-Z]/', ' $0', $this->property))];
     }
 
     /**
