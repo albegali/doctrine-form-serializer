@@ -2,18 +2,12 @@
 
 namespace Albegali\DoctrineFormSerializer\Providers\Input;
 
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Yaml\Yaml;
 
-class YamlInputProvider extends AbstractInputProvider
+class YamlInputProvider extends AbstractFileInputProvider
 {
-    public function parse($fileName)
+    protected function importFile($file)
     {
-        if (!file_exists($fileName)) {
-            throw new FileNotFoundException('File ' . $fileName . ' not found');
-        }
-        $content = Yaml::parse(file_get_contents($fileName));
-
-        $this->processConfiguration($content);
+        return Yaml::parse(file_get_contents($file), Yaml::PARSE_CONSTANT);
     }
 }

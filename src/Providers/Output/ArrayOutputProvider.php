@@ -8,15 +8,15 @@ class ArrayOutputProvider extends AbstractOutputProvider
     {
         $this->form = $this->mergeDefaultData($form, $defaultFormData);
 
-        foreach ($this->form['fields'] as &$field) {
-            $field = $this->populateFieldAttributes($field);
+        foreach ($this->form['blocks'] as &$block) {
+            foreach ($block['fields'] as $propertyPath => $field) {
+                $block['fields'][$propertyPath] = $this->populateFieldAttributes($propertyPath, $field);
+            }
         }
     }
 
-    protected function populateFieldAttributes($field)
+    protected function populateFieldAttributes($propertyPath, $field)
     {
-        // path of the property
-        $propertyPath = $field['property'];
         $targetEntity = $this->form['entity'];
 
         if ($field['mapped'] == false) {

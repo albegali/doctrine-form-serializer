@@ -32,10 +32,10 @@ class SerializedTypeGuesser
     /** @var ClassMetadata|ClassMetadataInfo */
     private $metadata;
 
-    private static $htmlInputTags = ['input', 'select', 'textarea'];
+    public static $htmlInputTags = ['input', 'select', 'textarea'];
 
     /** @var array */
-    private static $htmlInputTypes = [
+    public static $htmlInputTypes = [
         'button',
         'checkbox',
         'color',

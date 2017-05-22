@@ -3,17 +3,18 @@
 namespace Albegali\DoctrineFormSerializer;
 
 use Albegali\DoctrineFormSerializer\Providers\Input\AbstractInputProvider;
+use Albegali\DoctrineFormSerializer\Providers\Input\InputProviderInterface;
 use Albegali\DoctrineFormSerializer\Providers\Output\AbstractOutputProvider;
 
 class FormBuilder
 {
-    /** @var AbstractInputProvider */
+    /** @var InputProviderInterface */
     private $inputProvider;
 
     /** @var AbstractOutputProvider */
     private $outputProvider;
 
-    public function __construct(AbstractInputProvider $inputProvider, AbstractOutputProvider $outputProvider)
+    public function __construct(InputProviderInterface $inputProvider, AbstractOutputProvider $outputProvider)
     {
         $this->inputProvider = $inputProvider;
         $this->outputProvider = $outputProvider;

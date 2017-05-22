@@ -2,6 +2,7 @@
 
 namespace Albegali\DoctrineFormSerializer\Configuration;
 
+use Albegali\DoctrineFormSerializer\Guesser\SerializedTypeGuesser;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -46,30 +47,14 @@ class FormConfiguration implements ConfigurationInterface
                 ->scalarNode('name')->isRequired()->end()
                 ->scalarNode('entity')->isRequired()->end()
                 ->booleanNode('enabled')->defaultTrue()->end()
-                ->arrayNode('fields')
+                ->arrayNode('blocks')
+                    ->useAttributeAsKey('key')
+                    ->normalizeKeys(false)
                     ->prototype('array')
                         ->children()
-                            ->scalarNode('property')->isRequired()->end()
-                            ->scalarNode('mapped')->defaultTrue()->end()
-                            ->enumNode('field')
-                                ->values(self::$htmlFields)
-                            ->end()
-//                            ->enumNode('type')
-//                                ->values($formTypes)
-//                            ->end()
-                            ->variableNode('default')->defaultNull()->end()
-                            ->arrayNode('choices')
-                                ->normalizeKeys(false)
-                                ->children()
-                                    ->enumNode('type')
-                                        ->isRequired()
-                                        ->values(['ws', 'service', 'array'])
-                                    ->end()
-                                    ->variableNode('data')->isRequired()->end()
-                                ->end()
-                            ->end()
-                            ->arrayNode('options')->prototype('variable')->end()->end()
-                            ->arrayNode('attributes')->normalizeKeys(false)->prototype('scalar')->end()->end()
+                            ->scalarNode('label')->end()
+                            ->append($this->getFieldsNode())
+//                            ->append($this->getDependenciesNode())
                         ->end()
                     ->end()
                 ->end()
@@ -77,6 +62,43 @@ class FormConfiguration implements ConfigurationInterface
         ;
 
         return $treeBuilder;
+    }
+
+    protected function getFieldsNode()
+    {
+        $treeBuilder = new TreeBuilder();
+        $rootNode = $treeBuilder->root('fields');
+
+        $rootNode
+            ->prototype('array')
+                ->children()
+                    ->scalarNode('mapped')->defaultTrue()->end()
+                    ->scalarNode('insertBefore')->end()
+                    ->scalarNode('insertAfter')->end()
+                    ->enumNode('field')
+                        ->values(SerializedTypeGuesser::$htmlInputTypes)
+                    ->end()
+                    ->enumNode('type')
+                        ->values(SerializedTypeGuesser::$htmlInputTags)
+                    ->end()
+                    ->variableNode('default')->defaultNull()->end()
+                    ->arrayNode('choices')
+                        ->normalizeKeys(false)
+                        ->children()
+                            ->enumNode('type')
+                                ->isRequired()
+                                ->values(['ws', 'service', 'array'])
+                            ->end()
+                            ->variableNode('data')->isRequired()->end()
+                        ->end()
+                    ->end()
+                    ->arrayNode('options')->prototype('variable')->end()->end()
+                    ->arrayNode('attributes')->normalizeKeys(false)->prototype('scalar')->end()->end()
+                ->end()
+            ->end()
+        ;
+
+        return $rootNode;
     }
 //
 //    protected function getDependenciesNode()
