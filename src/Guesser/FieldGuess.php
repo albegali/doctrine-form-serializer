@@ -9,7 +9,7 @@ class FieldGuess
     /** @var string */
     private $name;
     /** @var array */
-    private $options;
+    private $options = [];
     /** @var string */
     private $type;
     /** @var string */

@@ -7,6 +7,7 @@ use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\Common\Persistence\ObjectManager;
 use Doctrine\Common\Util\ClassUtils;
 use Doctrine\DBAL\Types\Type;
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
 use Doctrine\ORM\Mapping\ManyToMany;
 use Doctrine\ORM\Mapping\OneToMany;
@@ -57,6 +58,7 @@ class SerializedTypeGuesser
         'text',
         'time',
         'url',
+        'not_set'
     ];
 
     public function __construct(ObjectManager $objectManager, MetadataFactoryInterface $validatorMetadataFactory = null)
@@ -97,7 +99,7 @@ class SerializedTypeGuesser
             $this->property = array_pop($subfields);
 
             foreach ($subfields as $subfield) {
-                $this->fieldName .= '[' . $subfield . ']' . ($this->isMultipleRelation($class, $subfield) ? '[]' : '');
+                $this->fieldName .= '[' . $subfield . ']' . ($this->isMultipleRelation($class, $subfield) ? '[0]' : '');
                 $this->fieldId .= '_' . $subfield . ($this->isMultipleRelation($class, $subfield) ? '_0' : '');
 
                 $class = $this
@@ -186,10 +188,13 @@ class SerializedTypeGuesser
         if ($this->metadata->hasAssociation($this->property)) {
             $multiple = $this->metadata->isCollectionValuedAssociation($this->property);
             $mapping = $this->metadata->getAssociationMapping($this->property);
+            /** @var EntityRepository $entityRepository */
+            $entityRepository = $this->objectManager->getRepository($mapping['targetEntity']);
 
             return [
                 'multiple' => $multiple,
-                'entity' => $mapping['targetEntity']
+                'choices' => method_exists($entityRepository, 'getAllActiveKeyValue') ?
+                    $entityRepository->getAllActiveKeyValue() : []
             ];
         }
 
@@ -197,14 +202,6 @@ class SerializedTypeGuesser
             case Type::BOOLEAN:
                 return ['choices' => [0 => 'No', 1 => 'Si'], 'multiple' => false, 'expanded' => true];
                 break;
-            case Type::DATETIME:
-            case Type::DATETIMETZ:
-            case 'vardatetime':
-                return ['format' => 'd/M/y H:i:s', 'widget' => 'text'];
-            case Type::DATE:
-                return ['format' => 'd/M/y', 'widget' => 'text'];
-            case Type::TIME:
-                return ['format' => 'H:i:s', 'widget' => 'text'];
             default:
                 return [];
         }
@@ -212,8 +209,8 @@ class SerializedTypeGuesser
 
     public function guessValidators($class)
     {
-        $validators = ['constraint' => []];
-        $validators['constraint'][Length::class] = new Length(['min' => 0, 'max' => $this->guessMaxLength()]);
+        $validators = ['constraints' => []];
+        $validators['constraints'][Length::class] = new Length(['min' => 0, 'max' => $this->guessMaxLength()]);
         if ($this->validatorMetadataFactory) {
             $classMetadata = $this->validatorMetadataFactory->getMetadataFor($class);
 
@@ -224,8 +221,7 @@ class SerializedTypeGuesser
                     $constraints = $memberMetadata->getConstraints();
 
                     foreach ($constraints as $constraint) {
-
-                        $validators['constraint'][get_class($constraint)] = $constraint;
+                        $validators['constraints'][get_class($constraint)] = $constraint;
                     }
                 }
             }
