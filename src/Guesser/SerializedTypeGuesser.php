@@ -191,11 +191,16 @@ class SerializedTypeGuesser
             /** @var EntityRepository $entityRepository */
             $entityRepository = $this->objectManager->getRepository($mapping['targetEntity']);
 
-            return [
-                'multiple' => $multiple,
-                'choices' => method_exists($entityRepository, 'getAllActiveKeyValue') ?
-                    $entityRepository->getAllActiveKeyValue() : []
-            ];
+            $ret = [];
+            if (true === $multiple) {
+                $ret['multiple'] = true;
+            }
+
+            if (method_exists($entityRepository, 'getAllActiveKeyValue')) {
+                $ret['choices'] = $entityRepository->getAllActiveKeyValue();
+            }
+
+            return $ret;
         }
 
         switch ($this->metadata->getTypeOfField($this->property)) {
@@ -239,7 +244,7 @@ class SerializedTypeGuesser
 
         // Check whether the field exists and is nullable or not
         if ($this->metadata->hasField($this->property)) {
-            $required =  !$this->metadata->isNullable($this->property) && Type::BOOLEAN !== $this->metadata->getTypeOfField($this->property);
+            $required = !$this->metadata->isNullable($this->property) && Type::BOOLEAN !== $this->metadata->getTypeOfField($this->property);
         } else if ($this->metadata->isAssociationWithSingleJoinColumn($this->property)) {
             $mapping = $this->metadata->getAssociationMapping($this->property);
 
