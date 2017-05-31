@@ -74,6 +74,7 @@ class FormConfiguration implements ConfigurationInterface
                     ->scalarNode('mapped')->defaultTrue()->end()
                     ->scalarNode('insertBefore')->end()
                     ->scalarNode('insertAfter')->end()
+                    ->scalarNode('bindWith')->end()
                     ->enumNode('field')
                         ->values(SerializedTypeGuesser::$htmlInputTags)
                     ->end()

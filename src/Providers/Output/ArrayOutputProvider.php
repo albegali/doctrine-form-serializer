@@ -20,8 +20,9 @@ class ArrayOutputProvider extends AbstractOutputProvider
         $targetEntity = $this->form['entity'];
 
         if ($field['mapped'] == false) {
-            $field['attributes']['name'] = $this->form['name'] . '[' . $propertyPath . ']';
-            $field['attributes']['id'] = $this->form['name'] . '_' . str_replace('.', '_', $propertyPath);
+            $propertyPath = explode('.', $propertyPath);
+            $field['attributes']['name'] = $this->form['name'] . '[' . implode('][', $propertyPath) . ']';
+            $field['attributes']['id'] = $this->form['name'] . '_' . implode('_', $propertyPath);
             return $field;
         }
 
@@ -31,8 +32,7 @@ class ArrayOutputProvider extends AbstractOutputProvider
         $field['attributes']['id'] = $fieldGuess->getId();
         $field['type'] = $field['type'] ?? $fieldGuess->getType();
         $field['field'] = $field['field'] ?? $fieldGuess->getField();
-
-        $field['options'] = array_merge_recursive($fieldGuess->getOptions(), $field['options']);
+        $field['options'] = array_replace_recursive($fieldGuess->getOptions(), $field['options']);
 
         return $field;
     }
