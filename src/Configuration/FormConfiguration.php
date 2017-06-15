@@ -49,7 +49,7 @@ class FormConfiguration implements ConfigurationInterface
                 ->scalarNode('label')->isRequired()->end()
                 ->scalarNode('name')->isRequired()->end()
                 ->scalarNode('entity')->isRequired()->end()
-                ->scalarNode('serializeStrategy')->defaultValue('snake_case')->end()
+                ->scalarNode('serialize_strategy')->defaultValue('snake_case')->end()
                 ->booleanNode('enabled')->defaultTrue()->end()
                 ->arrayNode('blocks')
                     ->useAttributeAsKey('key')
@@ -75,6 +75,7 @@ class FormConfiguration implements ConfigurationInterface
         $rootNode
             ->prototype('array')
                 ->children()
+                    ->scalarNode('target_property')->defaultValue('id')->end()
                     ->scalarNode('mapped')->defaultTrue()->end()
                     ->scalarNode('insertBefore')->end()
                     ->scalarNode('insertAfter')->end()

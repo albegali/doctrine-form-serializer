@@ -67,12 +67,12 @@ class SerializedTypeGuesser
         $this->validatorMetadataFactory = $validatorMetadataFactory;
     }
 
-    public function guess(string $class, string $property, $formName = ''): FieldGuess
+    public function guess(string $class, string $property, string $targetProperty = null, $formName = ''): FieldGuess
     {
         $fieldGuess = new FieldGuess();
 
         $this->property = $property;
-        $class = $this->getPropertyClassName($formName, $class);
+        $class = $this->getPropertyClassName($formName, $class, $targetProperty);
         $this->metadata = $this->getMetadata($class);
 
         $fieldGuess->setName($this->guessName());
@@ -87,16 +87,18 @@ class SerializedTypeGuesser
         return $fieldGuess;
     }
 
-    public function getPropertyClassName($formName, $class)
+    public function getPropertyClassName($formName, $class, $targetProperty = null)
     {
         $this->fieldName = $formName;
         $this->fieldId = $formName;
+        $lastProperty = [$this->property];
 
         if (strpos($this->property, '.') !== false) {
             $subfields = explode('.', $this->property);
 
             // name of the property in the last associated entity
             $this->property = array_pop($subfields);
+            $lastProperty = [$this->property];
 
             foreach ($subfields as $subfield) {
                 $this->fieldName .= '[' . $subfield . ']' . ($this->isMultipleRelation($class, $subfield) ? '[0]' : '');
@@ -106,9 +108,16 @@ class SerializedTypeGuesser
                     ->getMetadata($class)
                     ->getAssociationMapping($subfield)['targetEntity'];
             }
+
+            try {
+                $this->getMetadata($class)->getAssociationMapping($this->property);
+                $lastProperty[] = $targetProperty;
+            } catch (\Exception $e) {
+            }
+
         }
 
-        $this->fieldName .= '[' . $this->property . ']';
+        $this->fieldName .= '[' . implode('][', $lastProperty) . ']';
         $this->fieldId .= '_' . $this->property;
 
         return $class;
