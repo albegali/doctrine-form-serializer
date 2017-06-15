@@ -2,6 +2,8 @@
 
 namespace Albegali\DoctrineFormSerializer\Guesser;
 
+use Albegali\DoctrineFormSerializer\Configuration\FormConfiguration;
+
 class FieldGuess
 {
     /** @var string */
@@ -36,9 +38,14 @@ class FieldGuess
     /**
      * @return string
      */
-    public function getName(): string
+    public function getName($serializeStrategy): string
     {
-        return $this->name;
+        if ($serializeStrategy === FormConfiguration::$serializeStrategyCamelCase) {
+            return lcfirst(implode('', array_map('ucfirst', explode('_', $this->name))));
+        }
+
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $this->name));
+
     }
 
     /**

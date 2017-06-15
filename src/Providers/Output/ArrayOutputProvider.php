@@ -18,6 +18,7 @@ class ArrayOutputProvider extends AbstractOutputProvider
     protected function populateFieldAttributes($propertyPath, $field)
     {
         $targetEntity = $this->form['entity'];
+        $serializeStrategy = $this->form['serializeStrategy'];
 
         if ($field['mapped'] == false) {
             $propertyPath = explode('.', $propertyPath);
@@ -28,7 +29,7 @@ class ArrayOutputProvider extends AbstractOutputProvider
 
         $fieldGuess = $this->typeGuesser->guess($targetEntity, $propertyPath, $this->form['name']);
 
-        $field['attributes']['name'] = $fieldGuess->getName();
+        $field['attributes']['name'] = $fieldGuess->getName($serializeStrategy);
         $field['attributes']['id'] = $fieldGuess->getId();
         $field['type'] = $field['type'] ?? $fieldGuess->getType();
         $field['field'] = $field['field'] ?? $fieldGuess->getField();

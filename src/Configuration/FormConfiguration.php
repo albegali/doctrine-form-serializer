@@ -32,6 +32,9 @@ class FormConfiguration implements ConfigurationInterface
         'url' => 'input',
     ];
 
+    public static $serializeStrategyCamelCase = 'camelCase';
+    public static $serializeStrategysnake_case = 'snake_case';
+
     /** @var array */
     private static $extraHtmlFields = [];
 
@@ -46,6 +49,7 @@ class FormConfiguration implements ConfigurationInterface
                 ->scalarNode('label')->isRequired()->end()
                 ->scalarNode('name')->isRequired()->end()
                 ->scalarNode('entity')->isRequired()->end()
+                ->scalarNode('serializeStrategy')->defaultValue('snake_case')->end()
                 ->booleanNode('enabled')->defaultTrue()->end()
                 ->arrayNode('blocks')
                     ->useAttributeAsKey('key')
